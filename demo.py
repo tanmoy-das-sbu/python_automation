@@ -105,7 +105,8 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
 
         # Insert images only on the second page at the position of #Image placeholder
         if page_number == 1 and '#Image' in replacements and replacements['#Image']:
-            image = download_image(replacements['#Image'])
+            image_url = replacements['#Image']
+            image = download_image(image_url)
             if image:
                 # Resize the image to 350px*450px
                 image = image.resize((118, 165))
@@ -140,7 +141,14 @@ def main():
         replacements = {}
         for placeholder in coordinates:
             if placeholder in student:
-                replacements[placeholder] = student[placeholder]
+                if placeholder == '#Image':
+                    # Generate the image URL based on the last four digits of #UidNumber
+                    uid_number = str(student['#UidNumber'])
+                    last_four_digits = uid_number[-4:]
+                    image_url = f"https://sbpsranchi.in/Stn/stnImg1920/S-{last_four_digits}.jpg"
+                    replacements[placeholder] = image_url
+                else:
+                    replacements[placeholder] = student[placeholder]
         
         # Generate output PDF name with the new directory
         output_pdf = os.path.join(output_dir, f"{student['#Name']}_certificate.pdf")

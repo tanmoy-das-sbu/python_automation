@@ -44,6 +44,28 @@ def insert_image(page, image, position):
         img_rect = fitz.Rect(position[0], position[1], position[0] + image.width, position[1] + image.height)
         page.insert_image(img_rect, stream=img_byte_arr.getvalue())
 
+def wrap_text(text, font_size, page_width):
+    """Wrap text to fit within the specified page width."""
+    wrapped_lines = []
+    words = text.split(' ')
+    current_line = ""
+
+    for word in words:
+        # Check the width of the current line with the new word
+        test_line = f"{current_line} {word}".strip()
+        test_width = fitz.get_text_length(test_line, fontsize=font_size)
+
+        if test_width <= page_width:
+            current_line = test_line
+        else:
+            wrapped_lines.append(current_line)
+            current_line = word  # Start a new line with the current word
+
+    if current_line:
+        wrapped_lines.append(current_line)  # Add the last line
+
+    return wrapped_lines
+
 def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
     # Open the template PDF
     fresh_pdf_document = fitz.open(template_pdf)
@@ -68,7 +90,15 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
                                 
                                 # Only insert text if the placeholder is not #Image
                                 if placeholder != '#Image':
-                                    page.insert_text((new_x, new_y), actual_value, fontsize=12, color=(0, 0, 0))
+                                    if placeholder in ['#Opinion', '#MdOpinion']:
+                                        # Wrap the text for long placeholders
+                                        page_width = 480 # Width of the placeholder
+                                        wrapped_lines = wrap_text(actual_value, font_size=12, page_width=page_width)
+                                        for line in wrapped_lines:
+                                            page.insert_text((new_x, new_y), line, fontsize=12, color=(0, 0, 0))
+                                            new_y += 15  # Move down for the next line
+                                    else:
+                                        page.insert_text((new_x, new_y), actual_value, fontsize=12, color=(0, 0, 0))
                                 
                                 # Mark this instance as inserted
                                 inserted_positions.add(inst)

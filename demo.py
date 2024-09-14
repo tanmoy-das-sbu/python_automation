@@ -73,7 +73,13 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
     for page_number, page in enumerate(fresh_pdf_document):
         for placeholder, instances in coordinates.items():
             if placeholder in replacements:
-                actual_value = str(replacements[placeholder])
+                actual_value = replacements[placeholder]
+                
+                # Check if the actual value is NaN
+                if pd.isna(actual_value):
+                    actual_value = ""  # Set to empty string if NaN
+                else:
+                    actual_value = str(actual_value)  # Convert to string if it's valid
                 
                 # Check if the current page has instances for this placeholder
                 for inst_page_number, inst_list in instances:
@@ -97,7 +103,7 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
                                         for line in wrapped_lines:
                                             page.insert_text((new_x, new_y), line, fontsize=12, color=(0, 0, 0))
                                             new_y += 15  # Move down for the next line
-                                    else:
+                                    elif actual_value:  # Only insert if actual_value is not empty
                                         page.insert_text((new_x, new_y), actual_value, fontsize=12, color=(0, 0, 0))
                                 
                                 # Mark this instance as inserted

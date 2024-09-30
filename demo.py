@@ -66,6 +66,13 @@ def wrap_text(text, font_size, page_width):
 
     return wrapped_lines
 
+def sanitize_text(text):
+    """Sanitize text by removing newlines and replacing problematic characters."""
+    # Handle apostrophes and other special characters
+    sanitized = text.replace("'", "’")  # Replace single quote with the right apostrophe
+    sanitized = sanitized.replace("\n", " ")  # Replace newlines with spaces
+    return sanitized
+
 def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
     # Open the template PDF
     fresh_pdf_document = fitz.open(template_pdf)
@@ -79,7 +86,7 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
                 if pd.isna(actual_value):
                     actual_value = ""  # Set to empty string if NaN
                 else:
-                    actual_value = str(actual_value)  # Convert to string if it's valid
+                    actual_value = sanitize_text(str(actual_value))  # Sanitize and convert to string if it's valid
                 
                 # Check if the current page has instances for this placeholder
                 for inst_page_number, inst_list in instances:
@@ -96,9 +103,9 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
                                 
                                 # Only insert text if the placeholder is not #Image
                                 if placeholder != '#Image':
-                                    if placeholder in ['#Opinion', '#MdOpinion']:
+                                    if placeholder in ['#TeachersOpinion', '#MomDadOpinion']:
                                         # Wrap the text for long placeholders
-                                        page_width = 480 # Width of the placeholder
+                                        page_width = 470  # Width of the placeholder
                                         wrapped_lines = wrap_text(actual_value, font_size=12, page_width=page_width)
                                         for line in wrapped_lines:
                                             page.insert_text((new_x, new_y), line, fontsize=12, color=(0, 0, 0))
@@ -132,7 +139,7 @@ def map_data_to_pdf(template_pdf, output_pdf, replacements, coordinates):
     fresh_pdf_document.close()
 
 def main():
-    # Load student data
+    # Load student data, keeping the original order
     student_data = pd.read_csv('students.csv')
 
     # Extract placeholders from the template PDF
@@ -142,6 +149,7 @@ def main():
     output_dir = 'StudentPdfs'
     os.makedirs(output_dir, exist_ok=True)
 
+    # Iterate through the data row by row in the given order
     for index, student in student_data.iterrows():
         # Prepare the replacements dictionary
         replacements = {}
@@ -156,8 +164,14 @@ def main():
                 else:
                     replacements[placeholder] = student[placeholder]
         
-        # Generate output PDF name with the new directory
-        output_pdf = os.path.join(output_dir, f"{student['#Name']}_certificate.pdf")
+        # Replace slashes in UidNumber to prevent directory issues
+        sanitized_uid_number = student['#UidNumber'].replace('/', '-')
+        
+        # Generate output PDF name with sanitized UidNumber
+        output_pdf = os.path.join(output_dir, f"{student['#Section']}-{student['#Name']}-{sanitized_uid_number}.pdf")
+        
+        # Ensure the directories for the output file exist
+        os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
         
         # Map data to the PDF
         map_data_to_pdf('templatewithoutplaceholder.pdf', output_pdf, replacements, coordinates)
